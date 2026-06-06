@@ -23,6 +23,9 @@ import kagglehub
 import os
 import io
 
+import pdfplumber
+from docx import Document
+
 st.set_page_config(page_title="Smart Recruitment Intelligence", layout="wide")
 st.title("💼 Smart Recruitment Intelligence Platform")
 st.markdown("**Advanced Resume Screening + Self-Attention + Positional Encoding**")
@@ -100,6 +103,24 @@ def extract_info(text):
     cert_keywords = ['certified','certification','certificate','aws','pmp','cpa','cfa','cisco']
     certs = [k for k in cert_keywords if k in text_lower]
     return {'skills': skills, 'experience_years': experience, 'education': education, 'certifications': certs}
+def extract_text(file):
+    if file.name.endswith(".pdf"):
+        text = ""
+        with pdfplumber.open(file) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        return text
+
+    elif file.name.endswith(".docx"):
+        doc = Document(file)
+        return "\n".join([p.text for p in doc.paragraphs])
+
+    elif file.name.endswith(".txt"):
+        return file.read().decode("utf-8")
+
+    return ""
 
 task = st.sidebar.radio("📌 Select Task", [
     "Task 1: Resume Analytics",
@@ -524,7 +545,7 @@ elif task == "Task 8: Recruitment Dashboard":
     resumes = {}
     if uploaded_files:
         for uf in uploaded_files:
-            resumes[uf.name] = uf.read().decode('utf-8')
+            resumes[uf.name] = extract_text(uf)
         st.success(f"Loaded {len(resumes)} resume(s)")
     else:
         st.info("No resumes uploaded. Using dataset samples.")
