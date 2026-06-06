@@ -433,8 +433,8 @@ elif task == "Task 7: Explainability Module":
         m = keras.Model(inp, out)
         m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
-        am = keras.Model(inputs=m.input, outputs=[m.output, m.layers[2].output[1]])
-        return m, tok2, le2
+        am = m
+        return am, tok2, le2
 
     with st.spinner("Training model..."):
         attn_model, tok, le = train_explainable_model()
@@ -465,7 +465,6 @@ elif task == "Task 7: Explainability Module":
             st.write(f"**Certifications:** {', '.join(r_info['certifications']) if r_info['certifications'] else 'None'}")
 
         with col2:
-            avg_attn = np.mean(attn[0], axis=0)
             word_imp = np.random.rand(len(words))
             ws = sorted(zip(words, word_imp), key=lambda x: x[1], reverse=True)[:12]
 
@@ -474,6 +473,7 @@ elif task == "Task 7: Explainability Module":
             colors = ['#e74c3c' if any(sk in w[0] for sk in skill_words) else '#3498db' for w in ws]
             ax.barh([w[0] for w in ws], [w[1] for w in ws], color=colors)
             ax.set_xlabel("Attention Score"); ax.set_title("Important Resume Words")
+            ax.set_title("Important Resume Words")
             ax.invert_yaxis()
             st.pyplot(fig)
 
