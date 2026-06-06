@@ -426,7 +426,8 @@ elif task == "Task 7: Explainability Module":
         X_tr, _, y_tr, _ = train_test_split(X, y, test_size=0.2, random_state=42)
         inp = keras.Input(shape=(MAX_LEN,))
         emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-        ao, as_ = layers.MultiHeadAttention(num_heads=4, key_dim=32, return_attention_scores=True)(emb, emb)
+        attention_layer = layers.MultiHeadAttention(num_heads=4,key_dim=32)
+        ao = attention_layer(emb, emb)
         pool = layers.GlobalAveragePooling1D()(ao)
         out = layers.Dense(nc, activation='softmax')(pool)
         m = keras.Model(inp, out)
@@ -445,7 +446,7 @@ elif task == "Task 7: Explainability Module":
         clean_r = clean_text(resume_text)
         words = clean_r.split()[:MAX_LEN]
         seq = pad_sequences(tok.texts_to_sequences([clean_r]), maxlen=MAX_LEN, padding='post')
-        pred, attn = attn_model.predict(seq, verbose=0)
+        pred = attn_model.predict(seq, verbose=0)
 
         category = le.classes_[np.argmax(pred)]
         conf = np.max(pred)
@@ -501,7 +502,7 @@ elif task == "Task 8: Recruitment Dashboard":
         X_tr, _, y_tr, _ = train_test_split(X, y, test_size=0.2, random_state=42)
         inp = keras.Input(shape=(MAX_LEN,))
         emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-        ao, as_ = layers.MultiHeadAttention(num_heads=4, key_dim=32, return_attention_scores=True)(emb, emb)
+        ao = layers.MultiHeadAttention(num_heads=4, key_dim=32)(emb, emb)
         pool = layers.GlobalAveragePooling1D()(ao)
         out = layers.Dense(nc, activation='softmax')(pool)
         m = keras.Model(inp, out)
@@ -647,7 +648,7 @@ elif task == "Bonus: Multi-Head Analysis":
     st.subheader(f"Attention Map per Head ({num_heads} heads) — Bonus 2")
     inp = keras.Input(shape=(MAX_LEN,))
     emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-    ao, as_ = layers.MultiHeadAttention(num_heads=num_heads, key_dim=EMBED_DIM//num_heads, return_attention_scores=True)(emb, emb)
+    ao = layers.MultiHeadAttention(num_heads=num_heads, key_dim=EMBED_DIM//num_heads)(emb, emb)
     pool = layers.GlobalAveragePooling1D()(ao)
     out = layers.Dense(nc, activation='softmax')(pool)
     m_vis = keras.Model(inp, out)
