@@ -445,7 +445,7 @@ elif task == "Task 7: Explainability Module":
 
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
 
-    return m, tok2, le2
+        return m, tok2, le2
     pred = attn_model.predict(seq, verbose=0)
 
     category = le.classes_[np.argmax(pred[0])]
