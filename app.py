@@ -519,7 +519,7 @@ elif task == "Task 8: Recruitment Dashboard":
     jd = st.text_area("Job Description:", "Senior Data Scientist with Python machine learning TensorFlow AWS SQL 5 years experience.")
 
     st.subheader("📤 Step 2: Upload Resumes")
-    uploaded_files = st.file_uploader("Upload resume .txt files", type=['txt'], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload resume .pdf/.txt/.docx files", type=['txt','pdf','docx'], accept_multiple_files=True)
 
     resumes = {}
     if uploaded_files:
