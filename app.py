@@ -434,7 +434,7 @@ elif task == "Task 7: Explainability Module":
         m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
         am = m
-        return am, tok2, le2
+    return am, tok2, le2
 
     with st.spinner("Training model..."):
         attn_model, tok, le = train_explainable_model()
