@@ -417,42 +417,73 @@ elif task == "Task 7: Explainability Module":
     def train_explainable_model():
         df2 = df.sample(min(3000, len(df)), random_state=42).copy()
         df2['clean'] = df2['resume_text'].apply(clean_text)
-
-        le2 = LabelEncoder()
-        df2['label'] = le2.fit_transform(df2['category'])
+        le2 = LabelEncoder(); df2['label'] = le2.fit_transform(df2['category'])
         nc = len(le2.classes_)
-
         tok2 = Tokenizer(num_words=MAX_VOCAB, oov_token='<OOV>')
         tok2.fit_on_texts(df2['clean'])
-
         X = pad_sequences(tok2.texts_to_sequences(df2['clean']), maxlen=MAX_LEN, padding='post')
         y = keras.utils.to_categorical(df2['label'], nc)
-
         X_tr, _, y_tr, _ = train_test_split(X, y, test_size=0.2, random_state=42)
-
         inp = keras.Input(shape=(MAX_LEN,))
         emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-
-        attention_layer = layers.MultiHeadAttention(num_heads=4, key_dim=32)
-        ao = attention_layer(emb, emb)
-
+        ao, as_ = layers.MultiHeadAttention(num_heads=4, key_dim=32, return_attention_scores=True)(emb, emb)
         pool = layers.GlobalAveragePooling1D()(ao)
         out = layers.Dense(nc, activation='softmax')(pool)
-
         m = keras.Model(inp, out)
-
         m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
+        am = keras.Model(inputs=m.input, outputs=[m.output, m.layers[2].output[1]])
+        return am, tok2, le2
 
-        return m, tok2, le2
-    pred = attn_model.predict(seq, verbose=0)
+    with st.spinner("Training model..."):
+        attn_model, tok, le = train_explainable_model()
 
-    category = le.classes_[np.argmax(pred[0])]
-    conf = np.max(pred[0])   
-    avg_attn = np.random.rand(len(words), len(words))
-    word_imp = np.mean(avg_attn, axis=0)
-    
+    resume_text = st.text_area("Paste a candidate's resume:", df['resume_text'].iloc[0][:600])
+    jd_input = st.text_area("Job Description:", "We need Python machine learning deep learning AWS Docker SQL experience.")
+
+    if st.button("Explain Selection"):
+        clean_r = clean_text(resume_text)
+        words = clean_r.split()[:MAX_LEN]
+        seq = pad_sequences(tok.texts_to_sequences([clean_r]), maxlen=MAX_LEN, padding='post')
+        pred, attn = attn_model.predict(seq, verbose=0)
+
+        category = le.classes_[np.argmax(pred)]
+        conf = np.max(pred)
+        r_info = extract_info(resume_text)
+        jd_info = extract_info(jd_input)
+        matched_skills = list(set(r_info['skills']) & set(jd_info['skills']))
+
+        st.success(f"**Predicted Category:** {category} | **Confidence:** {conf*100:.1f}%")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Why Candidate Was Selected?")
+            st.write(f"**Matched Skills:** {', '.join(matched_skills) if matched_skills else 'No overlap found'}")
+            st.write(f"**Experience:** {r_info['experience_years']} years")
+            st.write(f"**Education:** {', '.join(r_info['education']) if r_info['education'] else 'Not found'}")
+            st.write(f"**Certifications:** {', '.join(r_info['certifications']) if r_info['certifications'] else 'None'}")
+
+        with col2:
+            avg_attn = np.mean(attn[0], axis=0)
+            word_imp = np.mean(avg_attn[:len(words), :len(words)], axis=0)
+            ws = sorted(zip(words, word_imp[:len(words)]), key=lambda x: x[1], reverse=True)[:12]
+
+            fig, ax = plt.subplots(figsize=(8, 5))
+            skill_words = set(SKILL_KEYWORDS)
+            colors = ['#e74c3c' if any(sk in w[0] for sk in skill_words) else '#3498db' for w in ws]
+            ax.barh([w[0] for w in ws], [w[1] for w in ws], color=colors)
+            ax.set_xlabel("Attention Score"); ax.set_title("Important Resume Words")
+            ax.invert_yaxis()
+            st.pyplot(fig)
+
+        st.subheader("Attention Heatmap (Matching Evidence)")
+        disp = min(12, len(words))
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(avg_attn[:disp, :disp], cmap='YlOrRd', ax=ax,
+                    xticklabels=words[:disp], yticklabels=words[:disp])
+        plt.xticks(rotation=45, ha='right')
+        st.pyplot(fig)
+
 # ════════════════════════════════════════════════════════════════════════════════
 elif task == "Task 8: Recruitment Dashboard":
     st.header("🎯 Task 8: Full Recruitment Dashboard")
@@ -470,14 +501,14 @@ elif task == "Task 8: Recruitment Dashboard":
         X_tr, _, y_tr, _ = train_test_split(X, y, test_size=0.2, random_state=42)
         inp = keras.Input(shape=(MAX_LEN,))
         emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-        ao = layers.MultiHeadAttention(num_heads=4, key_dim=32)(emb, emb)
+        ao, as_ = layers.MultiHeadAttention(num_heads=4, key_dim=32, return_attention_scores=True)(emb, emb)
         pool = layers.GlobalAveragePooling1D()(ao)
         out = layers.Dense(nc, activation='softmax')(pool)
         m = keras.Model(inp, out)
         m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
-        am = keras.Model(inputs=m.input,outputs=m.output)
-    return am, tok2, le2, df2[['resume_text','category']]
+        am = keras.Model(inputs=m.input, outputs=[m.output, m.layers[2].output[1]])
+        return am, tok2, le2, df2[['resume_text','category']]
 
     with st.spinner("Preparing recruitment system..."):
         attn_model, tok, le, df_train = get_model()
@@ -616,7 +647,7 @@ elif task == "Bonus: Multi-Head Analysis":
     st.subheader(f"Attention Map per Head ({num_heads} heads) — Bonus 2")
     inp = keras.Input(shape=(MAX_LEN,))
     emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-    ao = layers.MultiHeadAttention(num_heads=num_heads, key_dim=EMBED_DIM//num_heads)(emb, emb)
+    ao, as_ = layers.MultiHeadAttention(num_heads=num_heads, key_dim=EMBED_DIM//num_heads, return_attention_scores=True)(emb, emb)
     pool = layers.GlobalAveragePooling1D()(ao)
     out = layers.Dense(nc, activation='softmax')(pool)
     m_vis = keras.Model(inp, out)
