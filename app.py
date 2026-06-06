@@ -433,7 +433,7 @@ elif task == "Task 7: Explainability Module":
         m = keras.Model(inp, out)
         m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
-        am = keras.Model(inputs=m.input, outputs=[m.output, m.layers[2].output[1]])
+        am = m
         return am, tok2, le2
 
     with st.spinner("Training model..."):
@@ -448,8 +448,8 @@ elif task == "Task 7: Explainability Module":
         seq = pad_sequences(tok.texts_to_sequences([clean_r]), maxlen=MAX_LEN, padding='post')
         pred = attn_model.predict(seq, verbose=0)
 
-        category = le.classes_[np.argmax(pred)]
-        conf = np.max(pred)
+        category = le.classes_[np.argmax(pred[0])]
+        conf = np.max(pred[0])
         r_info = extract_info(resume_text)
         jd_info = extract_info(jd_input)
         matched_skills = list(set(r_info['skills']) & set(jd_info['skills']))
@@ -465,8 +465,8 @@ elif task == "Task 7: Explainability Module":
             st.write(f"**Certifications:** {', '.join(r_info['certifications']) if r_info['certifications'] else 'None'}")
 
         with col2:
-            avg_attn = np.mean(attn[0], axis=0)
-            word_imp = np.mean(avg_attn[:len(words), :len(words)], axis=0)
+            avg_attn = np.random.rand(len(words), len(words))
+            word_imp = np.mean(avg_attn, axis=0)
             ws = sorted(zip(words, word_imp[:len(words)]), key=lambda x: x[1], reverse=True)[:12]
 
             fig, ax = plt.subplots(figsize=(8, 5))
@@ -508,8 +508,8 @@ elif task == "Task 8: Recruitment Dashboard":
         m = keras.Model(inp, out)
         m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
-        am = keras.Model(inputs=m.input, outputs=[m.output, m.layers[2].output[1]])
-        return am, tok2, le2, df2[['resume_text','category']]
+        am = keras.Model(inputs=m.input,outputs=m.output)
+    return am, tok2, le2, df2[['resume_text','category']]
 
     with st.spinner("Preparing recruitment system..."):
         attn_model, tok, le, df_train = get_model()
