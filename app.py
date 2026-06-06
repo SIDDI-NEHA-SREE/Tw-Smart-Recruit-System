@@ -417,25 +417,35 @@ elif task == "Task 7: Explainability Module":
     def train_explainable_model():
         df2 = df.sample(min(3000, len(df)), random_state=42).copy()
         df2['clean'] = df2['resume_text'].apply(clean_text)
-        le2 = LabelEncoder(); df2['label'] = le2.fit_transform(df2['category'])
+
+        le2 = LabelEncoder()
+        df2['label'] = le2.fit_transform(df2['category'])
         nc = len(le2.classes_)
+
         tok2 = Tokenizer(num_words=MAX_VOCAB, oov_token='<OOV>')
         tok2.fit_on_texts(df2['clean'])
+
         X = pad_sequences(tok2.texts_to_sequences(df2['clean']), maxlen=MAX_LEN, padding='post')
         y = keras.utils.to_categorical(df2['label'], nc)
+
         X_tr, _, y_tr, _ = train_test_split(X, y, test_size=0.2, random_state=42)
+
         inp = keras.Input(shape=(MAX_LEN,))
         emb = layers.Embedding(MAX_VOCAB, EMBED_DIM)(inp)
-        attention_layer = layers.MultiHeadAttention(num_heads=4,key_dim=32)
+
+        attention_layer = layers.MultiHeadAttention(num_heads=4, key_dim=32)
         ao = attention_layer(emb, emb)
+
         pool = layers.GlobalAveragePooling1D()(ao)
         out = layers.Dense(nc, activation='softmax')(pool)
-        m = keras.Model(inp, out)
-        m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-        m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
-        am = m
-    return am, tok2, le2
 
+        m = keras.Model(inp, out)
+
+        m.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        m.fit(X_tr, y_tr, epochs=5, batch_size=32, verbose=0)
+
+        return m, tok2, le2
     with st.spinner("Training model..."):
         attn_model, tok, le = train_explainable_model()
 
